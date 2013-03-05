@@ -54,7 +54,7 @@ Model model;
 
 /* the triangle indices & the vertex definitions for the model */
 unsigned int* indices;
-Vector3f* vertices;
+Vertex* vertices;
 
 /* simple vertex shader takes in a position & modelView matrix from
 the main program and uses clamp to vary the colour of each fragment 
@@ -63,32 +63,39 @@ static const char* VertexShader = "											\n\
 #version 330							 									\n\
 																			\n\
 layout (location = 0) in vec3 Position;										\n\
+layout (location = 1) in vec2 inTexCoord;									\n\
+																			\n\
 uniform mat4 modelView;														\n\
+																			\n\
 out vec4 Color;																\n\
+																			\n\
 void main()																	\n\
 {																			\n\
 	gl_Position = modelView * vec4(Position, 1.0);							\n\
-	Color = vec4(0.5, 0.0, 0.8, 1.0);							\n\
+	Color = vec4(0.5, 0.0, 0.8, 1.0);										\n\
 }";
+//out vec2 TextureCoords;														\n\
+//	TextureCoords = inTexCoord;												\n\
 
 /* simple shader that gets a color from the vertex shader and just passes it along */
 static const char* FragmentShader = "										\n\
 #version 330																\n\
 																			\n\
 out vec4 FragColor;															\n\
+																			\n\
 in vec4 Color;																\n\
 																			\n\
 void main()																	\n\
 {																			\n\
 	FragColor = Color;														\n\
 }";
+//in vec2 TextureCoords;														\n\
 
 
 int main(int argc, char** argv)
 {
 	ModelReader reader;
 	reader.ReadModel("model.txt", model);
-	//C:\\Users\\Terhands\\Desktop\\Test\\ConsoleApplication1\\ModelResources\\
 
 	initWindow(argc, argv);
 	initCallbacks();
@@ -101,6 +108,10 @@ int main(int argc, char** argv)
 	}
 
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glFrontFace(GL_CCW);
+	glCullFace(GL_BACK);
+	glEnable(GL_CULL_FACE);
+
 	createVertexBuffer();
 	createIndexBuffer();
 	CompileShaders();
@@ -155,21 +166,26 @@ void RenderScene()
 	if(!isDefault)
 	{
 		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
 
 		/* setting up the vertex buffer so the positions are accessible to the shader */
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)sizeof(Vector3f));
+
 		/* setting up the index buffer so the shader can use it to figure out which points belong to which triangle */
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+		glDrawElements(GL_TRIANGLES, model.numTriangles() * 3, GL_UNSIGNED_INT, 0);
 
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-		//glDrawElements(GL_TRIANGLES, model.numTriangles() * 3, GL_UNSIGNED_INT, 0);
-
+		/*
 		for(int i = 0; i < model.numTriangles() * 3; i += 3)
 		{
 			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, &indices[i]);
 		}
+		*/
 
 		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
 	}
 	else
 	{
@@ -208,7 +224,8 @@ void createVertexBuffer()
 {
 	/* set the triangle points */
 	int num_vertices = model.numVertices();
-	vertices = model.getVertices();
+	vertices = new Vertex[num_vertices];
+	model.getVertices(vertices);
 
 	/* add the vertices to the buffer so the points can be read by the vertex shader */
 	glGenBuffers(1, &VBO);
@@ -325,6 +342,7 @@ void CompileShaders()
 void cleanup()
 {
 	if (indices != NULL) { delete [] indices; indices = NULL; }
+	if (vertices != NULL) {delete [] vertices; vertices = NULL; }
 
 	exit(0);
 }

@@ -1,6 +1,7 @@
 #include "model.h"
 #include "PPM.hpp"
 
+#include <assert.h>
 #include <iostream>  // I/O 
 #include <fstream>   // file I/O
 #include <iomanip>   // format manipulation
@@ -67,12 +68,15 @@ void ModelReader::ReadTriangles(std::ifstream& in, Model& m)
 		in >> m.triangles[i].normalIndex;
 		in >> m.triangles[i].textureIndex;
 
-		in >> m.triangles[i].v1tx;
-		in >> m.triangles[i].v1ty;
-		in >> m.triangles[i].v2tx;
-		in >> m.triangles[i].v2ty;
-		in >> m.triangles[i].v3tx;
-		in >> m.triangles[i].v3ty;
+		float x, y;
+		for (int j = 0; j < 3; j++)
+		{
+			in >> x;
+			in >> y;
+
+			m.triangles[i].textureCoord[j].x = x;
+			m.triangles[i].textureCoord[j].y = y;
+		}
 	}
 }
 
@@ -111,6 +115,25 @@ void Model::getTriangles(unsigned int* indices)
 		indices[i] = triangles[j].v1;
 		indices[i + 1] = triangles[j].v2;
 		indices[i + 2] = triangles[j].v3;
+	}
+}
+
+void Model::getVertices(Vertex* v)
+{
+	for(int j = 0; j < num_triangles; j += 1)
+	{
+		assert(triangles[j].v1 < num_vertices);
+		assert(triangles[j].v2 < num_vertices);
+		assert(triangles[j].v3 < num_vertices);
+
+		v[triangles[j].v1].position = Vector3f(vertices[triangles[j].v1]);
+		v[triangles[j].v1].texPos = Vector2f(triangles[j].textureCoord[0]);
+
+		v[triangles[j].v2].position = Vector3f(vertices[triangles[j].v2]);
+		v[triangles[j].v2].texPos = Vector2f(triangles[j].textureCoord[1]);
+
+		v[triangles[j].v3].position = Vector3f(vertices[triangles[j].v3]);
+		v[triangles[j].v3].texPos = Vector2f(triangles[j].textureCoord[2]);
 	}
 }
 

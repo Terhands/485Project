@@ -21,9 +21,7 @@ struct Triangle
 	int normalIndex, textureIndex;
 
 	// points to map the vertices to the texture image
-	double v1tx, v1ty;
-	double v2tx, v2ty;
-	double v3tx, v3ty;
+	Vector2f textureCoord[3];
 };
 
 struct Texture
@@ -78,17 +76,16 @@ struct Model
 		return buildingName;
 	}
 
-	Vector3f* getVertices()
-	{
-		return vertices;
-	}
-
 	Vector3f* getNormals()
 	{
 		return normals;
 	}
 
+	void getVertices(Vertex* v);
+
+	/* retrieve the vertex indices of the triangles to be drawn */
 	void getTriangles(unsigned int* indices);
+
 	// byte* getTextures(); ?
 
 	~Model();
