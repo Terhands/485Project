@@ -49,15 +49,16 @@ void Pipeline::initPerspectiveProjection(Matrix4f& m) const
 	const float aRatio = m_perspectiveProjection.width / m_perspectiveProjection.height;
 	const float zNear = m_perspectiveProjection.zNear;
 	const float zFar = m_perspectiveProjection.zFar;
-	const float zRange = zNear - zFar;
+	const float zRange = zFar - zNear;
 	const float tanHalfFovy = tanf(ToRadian(m_perspectiveProjection.fovy / 2.0));
 
 	/* populate the camera's transformation matrix (converting x,y,z points to a 2D plane) */
 	copyMatrix(m, m_identity);
-	m.m[0][0] = 1.0f/(tanHalfFovy * aRatio);
+	
+	m.m[0][0] = 1.0f/(tanHalfFovy - aRatio);
 	m.m[1][1] = 1.0f/(tanHalfFovy);
 	m.m[2][2] = (-zNear - zFar) / zRange;
-	m.m[2][3] = 2.0f*zFar*zNear/zRange;
+	m.m[2][3] = (2.0f*zFar*zNear)/zRange;
 	m.m[3][2] = 1.0f;
 	m.m[3][3] = 0.0f;
 }
@@ -106,5 +107,6 @@ const Matrix4f* Pipeline::GetTrans()
 	initCameraTransformation(cTransform);
 
 	m_transformation = pTransform * cTransform * tTransform * rTransform * sTransform;
+
 	return &m_transformation;
 }

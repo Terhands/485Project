@@ -17,6 +17,8 @@ using namespace std;
 
 void initWindow(int argc, char** argv);
 void initCallbacks();
+void loadTextures();
+
 static void keyboardReg(unsigned char key, int x, int y);
 static void keyboardSpec(int key, int x, int y);
 static void mouseHandler(int button, int state, int x, int y);
@@ -35,16 +37,19 @@ bool isDefault;
 // the index buffer object address
 GLuint IBO;
 
-// the texture buffer object address
+// the texture buffer object address?
 GLuint TBO;
 
 // the vertex buffer object address
 GLuint VBO;
 GLuint gWorldLocation;
+GLuint gSampler;
 
 /* the current width & height of the screen */
 GLuint screen_width;
 GLuint screen_height;
+
+GLuint* textures;
 
 /* the camera object controls its location & view direction */
 Camera camera;
@@ -68,14 +73,14 @@ layout (location = 1) in vec2 inTexCoord;									\n\
 uniform mat4 modelView;														\n\
 																			\n\
 out vec4 Color;																\n\
+out vec2 TextureCoords;														\n\
 																			\n\
 void main()																	\n\
 {																			\n\
 	gl_Position = modelView * vec4(Position, 1.0);							\n\
 	Color = vec4(0.5, 0.0, 0.8, 1.0);										\n\
+	TextureCoords = inTexCoord;												\n\
 }";
-//out vec2 TextureCoords;														\n\
-//	TextureCoords = inTexCoord;												\n\
 
 /* simple shader that gets a color from the vertex shader and just passes it along */
 static const char* FragmentShader = "										\n\
@@ -83,13 +88,15 @@ static const char* FragmentShader = "										\n\
 																			\n\
 out vec4 FragColor;															\n\
 																			\n\
+uniform sampler2D gSampler;													\n\
+																			\n\
 in vec4 Color;																\n\
+in vec2 TextureCoords;														\n\
 																			\n\
 void main()																	\n\
 {																			\n\
-	FragColor = Color;														\n\
+	FragColor = texture2D(gSampler, TextureCoords.xy);						\n\
 }";
-//in vec2 TextureCoords;														\n\
 
 
 int main(int argc, char** argv)
@@ -115,6 +122,9 @@ int main(int argc, char** argv)
 	createVertexBuffer();
 	createIndexBuffer();
 	CompileShaders();
+
+	glUniform1i(gSampler, 0);
+	loadTextures();
 
 	glutMainLoop();
 
@@ -153,10 +163,10 @@ void RenderScene()
 	/* setting up the transformation pipeline */
 	Pipeline p;
 	/* start out looking along the z axis, the camera defaults to start looking along z from the world's origin */
-	p.WorldPos(0.0f, 0.0f, 30.0f);
+	p.WorldPos(-2.0f, -2.0f, 20.0f);
 	p.Rotate(0.0f, 0.0f, 0.0f);
 	p.SetCamera(camera.getCameraPosition(), camera.getViewTarget(), camera.getUpDirection());
-	p.SetPerspectiveProjection(60.0f, screen_width, screen_height, 1.0f, 100.0f);
+	p.SetPerspectiveProjection(45.0f, screen_width, screen_height, 1.0f, 1000.0f);
 
 	/* the camera is generating a rotation matrix relative to the model world */
 	Matrix4f m = (*(p.GetTrans()) * camera.getRotationM());
@@ -175,6 +185,10 @@ void RenderScene()
 
 		/* setting up the index buffer so the shader can use it to figure out which points belong to which triangle */
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textures[0]);
+
 		glDrawElements(GL_TRIANGLES, model.numTriangles() * 3, GL_UNSIGNED_INT, 0);
 
 		/*
@@ -216,7 +230,9 @@ void resize(int w, int h)
 	screen_width = w;
 	screen_height = h;
 	
-	glutPostRedisplay();
+	glViewport(0,0,screen_width, screen_height);
+	
+	//glutPostRedisplay();
 }
 
 /* function to build the vertex array for the triangles to be drawn */
@@ -245,6 +261,23 @@ void createIndexBuffer()
 	glGenBuffers(1, &IBO);
 	glBindBuffer(GL_ARRAY_BUFFER, IBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(*indices) * num_indices, indices, GL_STATIC_DRAW);
+}
+
+void loadTextures()
+{
+	// not sure if this is working... each index of textures has the same value?
+	textures = new GLuint[model.numTextures()];
+	glGenTextures(model.numTextures(), textures);
+
+	for(int i = 0; i < 10; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, model.getTexture(i)->width, model.getTexture(i)->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, model.getTexture(i)->texture);
+
+		// setting how the texture will be mapped if the triangle is larger or smaller than the texture image
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
 }
 
 static void keyboardReg(unsigned char key, int x, int y)
@@ -337,6 +370,9 @@ void CompileShaders()
 
 	gWorldLocation = glGetUniformLocation(shaderProgram, "modelView");
 	assert(gWorldLocation != 0xFFFFFFFF);
+
+	gSampler = glGetUniformLocation(shaderProgram, "gSampler");
+	assert(gSampler != 0xFFFFFFFF);
 }
 
 void cleanup()

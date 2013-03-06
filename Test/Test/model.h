@@ -86,7 +86,17 @@ struct Model
 	/* retrieve the vertex indices of the triangles to be drawn */
 	void getTriangles(unsigned int* indices);
 
-	// byte* getTextures(); ?
+	Texture* getTexture(int index)
+	{
+		if(index < num_textures)
+		{
+			return &textures[index];
+		}
+		else
+		{
+			return NULL;
+		}
+	}
 
 	~Model();
 };
